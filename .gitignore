@@ -1,0 +1,53 @@
+# Backend (.gitignore)
+# Python environment
+.env
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.pytest_cache/
+
+# Build and temporary files
+dist/
+build/
+*.log
+*.sqlite3
+*.swp
+*.swo
+*.bak
+*.tmp
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*.log
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Frontend (.gitignore)
+# Node.js environment
+node_modules/
+package-lock.json
+yarn.lock
+
+# Build directory
+dist/
+
+# Environment files
+.env
+
+# IDE files
+*.vscode
+*.idea
+*.swp
+*.swo
+*.log
+
+# OS files
+.DS_Store
+Thumbs.db
