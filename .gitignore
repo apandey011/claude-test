@@ -51,6 +51,9 @@ dist/
 .DS_Store
 Thumbs.db
 
+# Root-level lockfile (no root package.json; frontend has its own)
+/package-lock.json
+
 # Claude Code
 .claude/settings.local.json
 .claude/
