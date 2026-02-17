@@ -3,7 +3,7 @@ import { APIProvider } from "@vis.gl/react-google-maps";
 import { fetchRouteWeather } from "./api";
 import { MultiRouteResponse } from "./types";
 import LocationForm, { LocationFormHandle } from "./components/LocationForm";
-import RecentRoutes, { loadHistory, saveToHistory, clearHistory, RecentRoute } from "./components/RecentRoutes";
+import { loadHistory, saveToHistory, RecentRoute } from "./components/RecentRoutes";
 import RouteMap from "./components/RouteMap";
 import RouteRecommendationBanner from "./components/RouteRecommendationBanner";
 import TempToggle from "./components/TempToggle";
@@ -115,25 +115,7 @@ export default function App() {
         />
       </header>
 
-      <LocationForm ref={formRef} onSubmit={handleSubmit} loading={loading} />
-
-      {!routeData && !loading && (
-        <RecentRoutes
-          history={recentHistory}
-          onSelect={(entry) => {
-            formRef.current?.fillAndSubmit(
-              entry.origin,
-              entry.destination,
-              entry.originDisplay,
-              entry.destinationDisplay
-            );
-          }}
-          onClear={() => {
-            clearHistory();
-            setRecentHistory([]);
-          }}
-        />
-      )}
+      <LocationForm ref={formRef} onSubmit={handleSubmit} loading={loading} recentHistory={recentHistory} />
 
       {error && (
         <div className="error-banner">

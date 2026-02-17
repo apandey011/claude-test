@@ -1,5 +1,6 @@
-import { FormEvent, forwardRef, useImperativeHandle, useRef, useState } from "react";
+import { FormEvent, forwardRef, useImperativeHandle, useMemo, useRef, useState } from "react";
 import PlaceAutocomplete from "./PlaceAutocomplete";
+import { RecentRoute } from "./RecentRoutes";
 
 function getLocalDateTimeString(date: Date = new Date()): string {
   const d = new Date(date);
@@ -38,16 +39,41 @@ interface Props {
     destinationDisplay?: string
   ) => void;
   loading: boolean;
+  recentHistory?: RecentRoute[];
 }
 
 export default forwardRef<LocationFormHandle, Props>(
-  function LocationForm({ onSubmit, loading }, ref) {
+  function LocationForm({ onSubmit, loading, recentHistory }, ref) {
   const originRef = useRef<HTMLInputElement>(null);
   const destinationRef = useRef<HTMLInputElement>(null);
   const originQueryRef = useRef<string>("");
   const destinationQueryRef = useRef<string>("");
   const [departureTime, setDepartureTime] = useState(getLocalDateTimeString());
   const [validationError, setValidationError] = useState<string | null>(null);
+
+  const recentOrigins = useMemo(() => {
+    if (!recentHistory?.length) return [];
+    const seen = new Set<string>();
+    return recentHistory.reduce<{ display: string; query: string }[]>((acc, r) => {
+      if (!seen.has(r.originDisplay)) {
+        seen.add(r.originDisplay);
+        acc.push({ display: r.originDisplay, query: r.origin });
+      }
+      return acc;
+    }, []);
+  }, [recentHistory]);
+
+  const recentDestinations = useMemo(() => {
+    if (!recentHistory?.length) return [];
+    const seen = new Set<string>();
+    return recentHistory.reduce<{ display: string; query: string }[]>((acc, r) => {
+      if (!seen.has(r.destinationDisplay)) {
+        seen.add(r.destinationDisplay);
+        acc.push({ display: r.destinationDisplay, query: r.destination });
+      }
+      return acc;
+    }, []);
+  }, [recentHistory]);
 
   useImperativeHandle(ref, () => ({
     fillAndSubmit(origin, destination, originDisplay, destinationDisplay, dept) {
@@ -93,6 +119,7 @@ export default forwardRef<LocationFormHandle, Props>(
           onPlaceSelect={(q) => { originQueryRef.current = q; setValidationError(null); }}
           onManualEdit={() => { originQueryRef.current = ""; setValidationError(null); }}
           onCurrentLocation={(lat, lng) => { originQueryRef.current = `${lat},${lng}`; setValidationError(null); }}
+          recentLocations={recentOrigins}
           required
         />
         <button
@@ -117,6 +144,7 @@ export default forwardRef<LocationFormHandle, Props>(
           onPlaceSelect={(q) => { destinationQueryRef.current = q; setValidationError(null); }}
           onManualEdit={() => { destinationQueryRef.current = ""; setValidationError(null); }}
           onCurrentLocation={(lat, lng) => { destinationQueryRef.current = `${lat},${lng}`; setValidationError(null); }}
+          recentLocations={recentDestinations}
           required
         />
         <input

@@ -1,22 +1,30 @@
 import { useEffect, useImperativeHandle, useRef, useState, forwardRef } from "react";
 import { useMapsLibrary } from "@vis.gl/react-google-maps";
 
+interface RecentLocation {
+  display: string;
+  query: string;
+}
+
 interface Props {
   placeholder: string;
   onPlaceSelect?: (query: string) => void;
   onManualEdit?: () => void;
   onCurrentLocation?: (lat: number, lng: number) => void;
+  recentLocations?: RecentLocation[];
   required?: boolean;
 }
 
 const PlaceAutocomplete = forwardRef<HTMLInputElement, Props>(
-  ({ placeholder, onPlaceSelect, onManualEdit, onCurrentLocation, required }, ref) => {
+  ({ placeholder, onPlaceSelect, onManualEdit, onCurrentLocation, recentLocations = [], required }, ref) => {
     const inputRef = useRef<HTMLInputElement>(null);
     const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null);
     const wrapperRef = useRef<HTMLDivElement>(null);
     const places = useMapsLibrary("places");
     const [showDropdown, setShowDropdown] = useState(false);
     const [geoLoading, setGeoLoading] = useState(false);
+
+    const hasDropdownItems = !!onCurrentLocation || recentLocations.length > 0;
 
     useImperativeHandle(ref, () => inputRef.current!);
 
@@ -51,17 +59,16 @@ const PlaceAutocomplete = forwardRef<HTMLInputElement, Props>(
     }, []);
 
     function handleFocus() {
-      if (onCurrentLocation && !inputRef.current?.value) {
+      if (hasDropdownItems && !inputRef.current?.value) {
         setShowDropdown(true);
       }
     }
 
     function handleInput() {
       onManualEdit?.();
-      // Hide dropdown once user starts typing (Google autocomplete takes over)
       if (inputRef.current?.value) {
         setShowDropdown(false);
-      } else if (onCurrentLocation) {
+      } else if (hasDropdownItems) {
         setShowDropdown(true);
       }
     }
@@ -75,7 +82,6 @@ const PlaceAutocomplete = forwardRef<HTMLInputElement, Props>(
           onCurrentLocation(latitude, longitude);
           setShowDropdown(false);
 
-          // Reverse geocode to show address instead of "Current Location"
           const geocoder = new google.maps.Geocoder();
           geocoder.geocode(
             { location: { lat: latitude, lng: longitude } },
@@ -98,6 +104,12 @@ const PlaceAutocomplete = forwardRef<HTMLInputElement, Props>(
       );
     }
 
+    function handleRecentSelect(loc: RecentLocation) {
+      if (inputRef.current) inputRef.current.value = loc.display;
+      onPlaceSelect?.(loc.query);
+      setShowDropdown(false);
+    }
+
     return (
       <div className="place-autocomplete-wrapper" ref={wrapperRef}>
         <input
@@ -108,20 +120,37 @@ const PlaceAutocomplete = forwardRef<HTMLInputElement, Props>(
           onInput={handleInput}
           required={required}
         />
-        {showDropdown && onCurrentLocation && (
+        {showDropdown && hasDropdownItems && (
           <div className="current-location-dropdown">
-            <button
-              type="button"
-              className="current-location-option"
-              onMouseDown={(e) => e.preventDefault()}
-              onClick={handleUseLocation}
-              disabled={geoLoading}
-            >
-              <span className="current-location-icon">{geoLoading ? "..." : "\u{1F4CD}"}</span>
-              <span className="current-location-text">
-                {geoLoading ? "Getting location..." : "Use current location"}
-              </span>
-            </button>
+            {onCurrentLocation && (
+              <button
+                type="button"
+                className="current-location-option"
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={handleUseLocation}
+                disabled={geoLoading}
+              >
+                <span className="current-location-icon">{geoLoading ? "..." : "\u{1F4CD}"}</span>
+                <span className="current-location-text">
+                  {geoLoading ? "Getting location..." : "Use current location"}
+                </span>
+              </button>
+            )}
+            {recentLocations.length > 0 && onCurrentLocation && (
+              <div className="dropdown-divider" />
+            )}
+            {recentLocations.map((loc, idx) => (
+              <button
+                key={idx}
+                type="button"
+                className="current-location-option"
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={() => handleRecentSelect(loc)}
+              >
+                <span className="current-location-icon">{"\u{1F552}"}</span>
+                <span className="current-location-text">{loc.display}</span>
+              </button>
+            ))}
           </div>
         )}
       </div>
