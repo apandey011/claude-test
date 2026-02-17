@@ -1,0 +1,11 @@
+.git
+.gitignore
+CLAUDE.md
+backend/.venv
+backend/.env
+frontend/.env
+frontend/node_modules
+node_modules
+**/__pycache__
+**/*.pyc
+.DS_Store

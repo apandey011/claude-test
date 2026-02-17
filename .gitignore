@@ -32,7 +32,6 @@ Thumbs.db
 # Frontend (.gitignore)
 # Node.js environment
 node_modules/
-package-lock.json
 yarn.lock
 
 # Build directory
