@@ -1,80 +1,98 @@
+import logging
 from datetime import datetime, timezone
 
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
 
 from .models import RouteRequest, RouteWithWeather, MultiRouteResponse
+from .services.cache import route_cache
 from .services.directions import get_routes
 from .services.sampling import sample_route_points
 from .services.scoring import score_routes
 from .services.weather import get_weather_for_waypoints
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
 
 @router.post("/api/route-weather", response_model=MultiRouteResponse)
 async def route_weather(request: RouteRequest):
-    routes_data = await get_routes(request.origin, request.destination)
-    departure = request.departure_time or datetime.now(timezone.utc)
+    departure_iso = request.departure_time.isoformat() if request.departure_time else None
+    cache_key = route_cache.make_key(request.origin, request.destination, departure_iso)
+    cached = route_cache.get(cache_key)
+    if cached:
+        return cached
 
-    # Sample waypoints for each route
-    all_route_waypoints = []
-    for route in routes_data["routes"]:
-        waypoints = sample_route_points(route["steps"], departure)
-        all_route_waypoints.append(waypoints)
+    try:
+        routes_data = await get_routes(request.origin, request.destination)
+        departure = request.departure_time or datetime.now(timezone.utc)
 
-    # Deduplicate weather calls across routes.
-    # Routes often overlap, so many waypoints share nearly identical
-    # locations and times. Key by (lat rounded to 2dp, lng rounded to
-    # 2dp, hour) — ~1.1 km resolution, same hour.
-    unique_weather = {}  # key → waypoint (representative)
-    for waypoints in all_route_waypoints:
-        for wp in waypoints:
-            key = (
-                round(wp.location.lat, 2),
-                round(wp.location.lng, 2),
-                wp.estimated_time.replace(minute=0, second=0, microsecond=0),
+        # Sample waypoints for each route
+        all_route_waypoints = []
+        for route in routes_data["routes"]:
+            waypoints = sample_route_points(route["steps"], departure)
+            all_route_waypoints.append(waypoints)
+
+        # Deduplicate weather calls across routes.
+        # Routes often overlap, so many waypoints share nearly identical
+        # locations and times. Key by (lat rounded to 2dp, lng rounded to
+        # 2dp, hour) — ~1.1 km resolution, same hour.
+        unique_weather = {}  # key → waypoint (representative)
+        for waypoints in all_route_waypoints:
+            for wp in waypoints:
+                key = (
+                    round(wp.location.lat, 2),
+                    round(wp.location.lng, 2),
+                    wp.estimated_time.replace(minute=0, second=0, microsecond=0),
+                )
+                if key not in unique_weather:
+                    unique_weather[key] = wp
+
+        # Fetch weather for unique waypoints only
+        unique_list = list(unique_weather.values())
+        await get_weather_for_waypoints(unique_list)
+
+        # Build lookup and assign weather to all waypoints
+        weather_lookup = {k: wp.weather for k, wp in unique_weather.items()}
+        for waypoints in all_route_waypoints:
+            for wp in waypoints:
+                key = (
+                    round(wp.location.lat, 2),
+                    round(wp.location.lng, 2),
+                    wp.estimated_time.replace(minute=0, second=0, microsecond=0),
+                )
+                wp.weather = weather_lookup[key]
+
+        # Build response
+        route_results = []
+        for idx, (route, waypoints) in enumerate(
+            zip(routes_data["routes"], all_route_waypoints)
+        ):
+            route_results.append(
+                RouteWithWeather(
+                    route_index=idx,
+                    overview_polyline=route["overview_polyline"],
+                    summary=route["summary"],
+                    total_duration_minutes=route["total_duration_seconds"] // 60,
+                    total_distance_km=round(
+                        route["total_distance_meters"] / 1000, 1
+                    ),
+                    waypoints=waypoints,
+                )
             )
-            if key not in unique_weather:
-                unique_weather[key] = wp
 
-    # Fetch weather for unique waypoints only
-    unique_list = list(unique_weather.values())
-    await get_weather_for_waypoints(unique_list)
+        recommendation = await score_routes(route_results)
 
-    # Build lookup and assign weather to all waypoints
-    weather_lookup = {k: wp.weather for k, wp in unique_weather.items()}
-    for waypoints in all_route_waypoints:
-        for wp in waypoints:
-            key = (
-                round(wp.location.lat, 2),
-                round(wp.location.lng, 2),
-                wp.estimated_time.replace(minute=0, second=0, microsecond=0),
-            )
-            wp.weather = weather_lookup[key]
-
-    # Build response
-    route_results = []
-    for idx, (route, waypoints) in enumerate(
-        zip(routes_data["routes"], all_route_waypoints)
-    ):
-        route_results.append(
-            RouteWithWeather(
-                route_index=idx,
-                overview_polyline=route["overview_polyline"],
-                summary=route["summary"],
-                total_duration_minutes=route["total_duration_seconds"] // 60,
-                total_distance_km=round(
-                    route["total_distance_meters"] / 1000, 1
-                ),
-                waypoints=waypoints,
-            )
+        response = MultiRouteResponse(
+            origin_address=routes_data["origin_address"],
+            destination_address=routes_data["destination_address"],
+            routes=route_results,
+            recommendation=recommendation,
         )
-
-    recommendation = await score_routes(route_results)
-
-    return MultiRouteResponse(
-        origin_address=routes_data["origin_address"],
-        destination_address=routes_data["destination_address"],
-        routes=route_results,
-        recommendation=recommendation,
-    )
+        route_cache.set(cache_key, response)
+        return response
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logger.exception("Unexpected error in route_weather")
+        raise HTTPException(status_code=500, detail=str(exc))

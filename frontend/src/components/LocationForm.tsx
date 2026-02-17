@@ -1,4 +1,4 @@
-import { FormEvent, useRef, useState } from "react";
+import { FormEvent, forwardRef, useImperativeHandle, useRef, useState } from "react";
 import PlaceAutocomplete from "./PlaceAutocomplete";
 
 function getLocalDateTimeString(date: Date = new Date()): string {
@@ -19,33 +19,67 @@ function getMaxDateTimeString(): string {
   return getLocalDateTimeString(max);
 }
 
+export interface LocationFormHandle {
+  fillAndSubmit: (
+    origin: string,
+    destination: string,
+    originDisplay: string,
+    destinationDisplay: string,
+    departureTime?: string
+  ) => void;
+}
+
 interface Props {
   onSubmit: (
     origin: string,
     destination: string,
-    departureTime?: string
+    departureTime?: string,
+    originDisplay?: string,
+    destinationDisplay?: string
   ) => void;
   loading: boolean;
 }
 
-export default function LocationForm({ onSubmit, loading }: Props) {
+export default forwardRef<LocationFormHandle, Props>(
+  function LocationForm({ onSubmit, loading }, ref) {
   const originRef = useRef<HTMLInputElement>(null);
   const destinationRef = useRef<HTMLInputElement>(null);
   const originQueryRef = useRef<string>("");
   const destinationQueryRef = useRef<string>("");
   const [departureTime, setDepartureTime] = useState(getLocalDateTimeString());
+  const [validationError, setValidationError] = useState<string | null>(null);
+
+  useImperativeHandle(ref, () => ({
+    fillAndSubmit(origin, destination, originDisplay, destinationDisplay, dept) {
+      if (originRef.current) originRef.current.value = originDisplay;
+      if (destinationRef.current) destinationRef.current.value = destinationDisplay;
+      originQueryRef.current = origin;
+      destinationQueryRef.current = destination;
+      if (dept) setDepartureTime(dept);
+      onSubmit(origin, destination, dept, originDisplay, destinationDisplay);
+    },
+  }));
 
   function handleSubmit(e: FormEvent) {
     e.preventDefault();
-    // Delay by a tick so Google's place_changed callback fires before we read the refs
     setTimeout(() => {
       const originText = originRef.current?.value.trim() || "";
       const destText = destinationRef.current?.value.trim() || "";
-      if (!originText || !destText) return;
+      if (!originText || !destText) {
+        setValidationError("Please enter both origin and destination.");
+        return;
+      }
+      if (originText === destText) {
+        setValidationError("Origin and destination must be different.");
+        return;
+      }
+      setValidationError(null);
       onSubmit(
         originQueryRef.current || originText,
         destinationQueryRef.current || destText,
-        departureTime || undefined
+        departureTime || undefined,
+        originText,
+        destText
       );
     }, 0);
   }
@@ -56,8 +90,9 @@ export default function LocationForm({ onSubmit, loading }: Props) {
         <PlaceAutocomplete
           ref={originRef}
           placeholder="Starting location"
-          onPlaceSelect={(q) => { originQueryRef.current = q; }}
-          onManualEdit={() => { originQueryRef.current = ""; }}
+          onPlaceSelect={(q) => { originQueryRef.current = q; setValidationError(null); }}
+          onManualEdit={() => { originQueryRef.current = ""; setValidationError(null); }}
+          onCurrentLocation={(lat, lng) => { originQueryRef.current = `${lat},${lng}`; setValidationError(null); }}
           required
         />
         <button
@@ -71,6 +106,7 @@ export default function LocationForm({ onSubmit, loading }: Props) {
             const tmpQuery = originQueryRef.current;
             originQueryRef.current = destinationQueryRef.current;
             destinationQueryRef.current = tmpQuery;
+            setValidationError(null);
           }}
         >
           ⇄
@@ -78,8 +114,9 @@ export default function LocationForm({ onSubmit, loading }: Props) {
         <PlaceAutocomplete
           ref={destinationRef}
           placeholder="Destination"
-          onPlaceSelect={(q) => { destinationQueryRef.current = q; }}
-          onManualEdit={() => { destinationQueryRef.current = ""; }}
+          onPlaceSelect={(q) => { destinationQueryRef.current = q; setValidationError(null); }}
+          onManualEdit={() => { destinationQueryRef.current = ""; setValidationError(null); }}
+          onCurrentLocation={(lat, lng) => { destinationQueryRef.current = `${lat},${lng}`; setValidationError(null); }}
           required
         />
         <input
@@ -94,6 +131,9 @@ export default function LocationForm({ onSubmit, loading }: Props) {
       <button type="submit" disabled={loading}>
         {loading ? "Loading..." : "Get Route Weather"}
       </button>
+      {validationError && (
+        <div className="validation-error">{validationError}</div>
+      )}
     </form>
   );
-}
+});

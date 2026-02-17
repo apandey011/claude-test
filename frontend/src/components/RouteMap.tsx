@@ -117,10 +117,14 @@ function RoutesOverlay({
     return () => listener.remove();
   }, [map]);
 
-  const MIN_SCALE = 0.4;
-  const MAX_SCALE = 2.5;
-  const DIVISOR = 5;
-  const markerScale = Math.min(MAX_SCALE, Math.max(MIN_SCALE, (zoom - 4) / DIVISOR + MIN_SCALE));
+  // Smooth scaling: markers stay readable at all zoom levels without becoming huge.
+  // Uses a sigmoid-like curve that flattens at both ends.
+  const SCALE_MIN = 0.8;
+  const SCALE_MAX = 1.45;
+  const ZOOM_MID = 10;   // zoom level where scale is halfway
+  const STEEPNESS = 0.4;
+  const t = 1 / (1 + Math.exp(-STEEPNESS * (zoom - ZOOM_MID)));
+  const markerScale = SCALE_MIN + (SCALE_MAX - SCALE_MIN) * t;
 
   // Render polylines for all routes
   useEffect(() => {

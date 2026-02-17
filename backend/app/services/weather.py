@@ -108,9 +108,11 @@ async def get_weather_for_waypoints(
             )
             for wp in waypoints
         ]
-        weather_results = await asyncio.gather(*tasks)
+        weather_results = await asyncio.gather(*tasks, return_exceptions=True)
 
     for wp, weather in zip(waypoints, weather_results):
+        if isinstance(weather, Exception):
+            continue  # leave wp.weather as None
         wp.weather = weather
 
     return waypoints

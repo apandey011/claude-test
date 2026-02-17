@@ -104,12 +104,20 @@ def extract_features(route: RouteWithWeather, min_duration: int) -> list[float]:
 # Reverse geocoding
 # ---------------------------------------------------------------------------
 
+def _format_coords(lat: float, lng: float) -> str:
+    """Format coordinates as a human-readable string, e.g. '35.1°N, 117.2°W'."""
+    ns = "N" if lat >= 0 else "S"
+    ew = "E" if lng >= 0 else "W"
+    return f"{abs(lat):.1f}\u00b0{ns}, {abs(lng):.1f}\u00b0{ew}"
+
+
 async def _reverse_geocode_batch(
     coords: list[tuple[float, float]],
 ) -> dict[tuple[float, float], str]:
     """Reverse-geocode a list of (lat, lng) pairs to 'Town, State' strings.
 
     Deduplicates by rounding to 2 decimal places (~1.1 km).
+    Falls back to formatted coordinates when geocoding fails.
     """
     # Deduplicate by rounded coords
     unique: dict[tuple[float, float], tuple[float, float]] = {}
@@ -130,7 +138,6 @@ async def _reverse_geocode_batch(
                     GEOCODE_URL,
                     params={
                         "latlng": f"{lat},{lng}",
-                        "result_type": "locality|administrative_area_level_3",
                         "key": settings.google_maps_api_key,
                     },
                 )
@@ -138,13 +145,18 @@ async def _reverse_geocode_batch(
         responses = await asyncio.gather(*tasks, return_exceptions=True)
 
     for key, resp in zip(keys, responses):
+        lat, lng = unique[key]
+        fallback = _format_coords(lat, lng)
+
         if isinstance(resp, Exception):
-            results[key] = "unknown location"
+            results[key] = fallback
             continue
         data = resp.json()
         if data.get("status") == "OK" and data.get("results"):
             components = data["results"][0].get("address_components", [])
             town = ""
+            county = ""
+            feature = ""
             state = ""
             for comp in components:
                 types = comp.get("types", [])
@@ -152,27 +164,31 @@ async def _reverse_geocode_batch(
                     town = comp["long_name"]
                 elif "administrative_area_level_3" in types and not town:
                     town = comp["long_name"]
+                elif "administrative_area_level_2" in types:
+                    county = comp["long_name"]
+                elif "natural_feature" in types:
+                    feature = comp["long_name"]
                 elif "administrative_area_level_1" in types:
                     state = comp.get("short_name", comp["long_name"])
-            if town and state:
-                results[key] = f"{town}, {state}"
-            elif town:
-                results[key] = town
+            name = town or county or feature
+            if name and state:
+                results[key] = f"{name}, {state}"
+            elif name:
+                results[key] = name
             elif state:
                 results[key] = state
             else:
-                # Fall back to formatted address
                 results[key] = data["results"][0].get(
-                    "formatted_address", "unknown location"
+                    "formatted_address", fallback
                 )
         else:
-            results[key] = "unknown location"
+            results[key] = fallback
 
     # Map original coords to results via their rounded key
     full_results: dict[tuple[float, float], str] = {}
     for lat, lng in coords:
         key = (round(lat, 2), round(lng, 2))
-        full_results[(lat, lng)] = results.get(key, "unknown location")
+        full_results[(lat, lng)] = results.get(key, _format_coords(lat, lng))
 
     return full_results
 
@@ -337,7 +353,8 @@ async def score_routes(routes: list[RouteWithWeather]) -> RouteRecommendation:
 
     # Collect advisories for all routes in parallel (includes reverse geocoding)
     advisory_tasks = [_collect_advisories(r.waypoints) for r in routes]
-    all_advisories = await asyncio.gather(*advisory_tasks)
+    all_advisories_raw = await asyncio.gather(*advisory_tasks, return_exceptions=True)
+    all_advisories = [a if isinstance(a, list) else [] for a in all_advisories_raw]
 
     # Compute sub-scores for the UI
     scores: list[RouteScore] = []

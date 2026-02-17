@@ -8,7 +8,7 @@ DIRECTIONS_URL = "https://maps.googleapis.com/maps/api/directions/json"
 
 async def get_routes(origin: str, destination: str) -> dict:
     """Fetch all route alternatives from Google Directions API."""
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(timeout=30.0) as client:
         response = await client.get(
             DIRECTIONS_URL,
             params={
