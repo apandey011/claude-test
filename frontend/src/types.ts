@@ -21,15 +21,6 @@ export interface Waypoint {
   weather: WeatherData;
 }
 
-export interface RouteResponse {
-  overview_polyline: string;
-  origin_address: string;
-  destination_address: string;
-  total_duration_minutes: number;
-  total_distance_km: number;
-  waypoints: Waypoint[];
-}
-
 export interface RouteWithWeather {
   route_index: number;
   overview_polyline: string;

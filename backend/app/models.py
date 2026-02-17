@@ -34,15 +34,6 @@ class Waypoint(BaseModel):
     weather: WeatherData | None = None
 
 
-class RouteResponse(BaseModel):
-    overview_polyline: str
-    origin_address: str
-    destination_address: str
-    total_duration_minutes: int
-    total_distance_km: float
-    waypoints: list[Waypoint]
-
-
 class RouteWithWeather(BaseModel):
     route_index: int
     overview_polyline: str
