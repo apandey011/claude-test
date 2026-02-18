@@ -10,6 +10,7 @@ import TempToggle from "./components/TempToggle";
 import WeatherPanel from "./components/WeatherPanel";
 
 const GOOGLE_MAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || "";
+const E2E_MODE = import.meta.env.VITE_E2E_MODE === "1";
 
 export default function App() {
   const [routeData, setRouteData] = useState<MultiRouteResponse | null>(null);
@@ -101,8 +102,7 @@ export default function App() {
     setSelectedWaypointIdx(null);
   }
 
-  return (
-    <APIProvider apiKey={GOOGLE_MAPS_API_KEY}>
+  const appContent = (
     <div className="app">
       <header className="app-header">
         <div className="header-left">
@@ -172,16 +172,20 @@ export default function App() {
           </div>
         )}
         <div className="map-container">
-          <RouteMap
-            routeData={routeData}
-            selectedRouteIndex={selectedRouteIndex}
-            recommendedRouteIndex={routeData?.recommendation?.recommended_route_index ?? null}
-            onRouteSelect={handleRouteSelect}
-            useFahrenheit={useFahrenheit}
-            selectedWaypointIdx={selectedWaypointIdx}
-            onSelectWaypoint={setSelectedWaypointIdx}
-            onDeselectWaypoint={() => setSelectedWaypointIdx(null)}
-          />
+          {E2E_MODE ? (
+            <div data-testid="e2e-route-map" />
+          ) : (
+            <RouteMap
+              routeData={routeData}
+              selectedRouteIndex={selectedRouteIndex}
+              recommendedRouteIndex={routeData?.recommendation?.recommended_route_index ?? null}
+              onRouteSelect={handleRouteSelect}
+              useFahrenheit={useFahrenheit}
+              selectedWaypointIdx={selectedWaypointIdx}
+              onSelectWaypoint={setSelectedWaypointIdx}
+              onDeselectWaypoint={() => setSelectedWaypointIdx(null)}
+            />
+          )}
         </div>
         {selectedRoute && (
           <WeatherPanel
@@ -198,6 +202,15 @@ export default function App() {
         )}
       </div>
     </div>
+  );
+
+  if (E2E_MODE) {
+    return appContent;
+  }
+
+  return (
+    <APIProvider apiKey={GOOGLE_MAPS_API_KEY}>
+      {appContent}
     </APIProvider>
   );
 }

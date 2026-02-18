@@ -33,6 +33,8 @@ Thumbs.db
 # Node.js environment
 node_modules/
 yarn.lock
+frontend/playwright-report/
+frontend/test-results/
 
 # Build directory
 dist/

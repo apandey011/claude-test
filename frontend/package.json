@@ -7,7 +7,11 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "preview": "vite preview",
-    "test": "vitest run"
+    "test": "vitest run",
+    "test:e2e": "npx playwright test"
+  },
+  "engines": {
+    "node": "20.x"
   },
   "dependencies": {
     "@googlemaps/polyline-codec": "^1.0.28",

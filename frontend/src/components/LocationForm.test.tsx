@@ -1,21 +1,19 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { forwardRef } from "react";
 import LocationForm from "./LocationForm";
 
 vi.mock("./PlaceAutocomplete", () => ({
-  default: vi.fn().mockImplementation(
-    forwardRef(function MockPlaceAutocomplete(props: any, ref: any) {
-      return (
-        <input
-          ref={ref}
-          placeholder={props.placeholder}
-          required={props.required}
-          data-testid={props.placeholder}
-        />
-      );
-    })
-  ),
+  default: forwardRef(function MockPlaceAutocomplete(props: any, ref: any) {
+    return (
+      <input
+        ref={ref}
+        placeholder={props.placeholder}
+        required={props.required}
+        data-testid={props.placeholder}
+      />
+    );
+  }),
 }));
 
 describe("LocationForm", () => {
@@ -44,10 +42,11 @@ describe("LocationForm", () => {
   });
 
   it("shows validation error when both fields are empty", async () => {
-    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
     render(<LocationForm onSubmit={vi.fn()} loading={false} />);
 
-    await user.click(screen.getByRole("button", { name: /get route weather/i }));
+    const form = screen.getByRole("button", { name: /get route weather/i }).closest("form");
+    expect(form).toBeTruthy();
+    fireEvent.submit(form!);
     vi.runAllTimers();
 
     await waitFor(() => {
@@ -119,7 +118,9 @@ describe("LocationForm", () => {
     render(<LocationForm onSubmit={onSubmit} loading={false} />);
 
     // First trigger a validation error
-    await user.click(screen.getByRole("button", { name: /get route weather/i }));
+    const form = screen.getByRole("button", { name: /get route weather/i }).closest("form");
+    expect(form).toBeTruthy();
+    fireEvent.submit(form!);
     vi.runAllTimers();
 
     await waitFor(() => {
