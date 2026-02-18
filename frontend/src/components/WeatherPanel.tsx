@@ -1,4 +1,5 @@
 import { Waypoint, WeatherAdvisory } from "../types";
+import { toF, toMph, weatherEmoji, formatDurationCompact, formatTime } from "../utils";
 import WeatherAdvisories from "./WeatherAdvisories";
 
 interface Props {
@@ -7,39 +8,6 @@ interface Props {
   onSelectWaypoint: (idx: number) => void;
   onClose: () => void;
   advisories?: WeatherAdvisory[];
-}
-
-function toF(c: number): number {
-  return Math.round(c * 9 / 5 + 32);
-}
-
-function toMph(kmh: number): number {
-  return Math.round(kmh * 0.621371);
-}
-
-function weatherEmoji(code: number): string {
-  if (code === 0) return "\u2600\uFE0F";
-  if (code <= 3) return "\u26C5";
-  if (code <= 48) return "\uD83C\uDF2B\uFE0F";
-  if (code <= 55) return "\uD83C\uDF26\uFE0F";
-  if (code <= 67) return "\uD83C\uDF27\uFE0F";
-  if (code <= 77) return "\u2744\uFE0F";
-  if (code <= 82) return "\uD83C\uDF26\uFE0F";
-  if (code <= 86) return "\uD83C\uDF28\uFE0F";
-  return "\u26A1";
-}
-
-function formatDuration(minutes: number): string {
-  const h = Math.floor(minutes / 60);
-  const m = minutes % 60;
-  return `+${h}:${String(m).padStart(2, "0")}`;
-}
-
-function formatTime(iso: string): string {
-  return new Date(iso).toLocaleTimeString([], {
-    hour: "2-digit",
-    minute: "2-digit",
-  });
 }
 
 export default function WeatherPanel({ waypoints, useFahrenheit, onSelectWaypoint, onClose, advisories }: Props) {
@@ -81,7 +49,7 @@ export default function WeatherPanel({ waypoints, useFahrenheit, onSelectWaypoin
                     ? "Start"
                     : isLast
                       ? "Arrive"
-                      : formatDuration(wp.minutes_from_start)}
+                      : formatDurationCompact(wp.minutes_from_start)}
                 </span>
                 <span className="panel-clock">{formatTime(wp.estimated_time)}</span>
               </div>

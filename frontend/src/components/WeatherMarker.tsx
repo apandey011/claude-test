@@ -6,6 +6,7 @@ import {
   useMap,
 } from "@vis.gl/react-google-maps";
 import { Waypoint } from "../types";
+import { toF, weatherEmoji } from "../utils";
 import WeatherCard from "./WeatherCard";
 
 interface Props {
@@ -16,22 +17,6 @@ interface Props {
   onDeselect: () => void;
   scale: number;
   dimmed?: boolean;
-}
-
-function weatherEmoji(code: number): string {
-  if (code === 0) return "\u2600\uFE0F";
-  if (code <= 3) return "\u26C5";
-  if (code <= 48) return "\uD83C\uDF2B\uFE0F";
-  if (code <= 55) return "\uD83C\uDF26\uFE0F";
-  if (code <= 67) return "\uD83C\uDF27\uFE0F";
-  if (code <= 77) return "\u2744\uFE0F";
-  if (code <= 82) return "\uD83C\uDF26\uFE0F";
-  if (code <= 86) return "\uD83C\uDF28\uFE0F";
-  return "\u26A1";
-}
-
-function toF(c: number): number {
-  return Math.round(c * 9 / 5 + 32);
 }
 
 export default function WeatherMarker({ waypoint, useFahrenheit, isSelected, onSelect, onDeselect, scale, dimmed }: Props) {

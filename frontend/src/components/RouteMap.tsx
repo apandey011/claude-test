@@ -2,14 +2,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { AdvancedMarker, Map, useMap } from "@vis.gl/react-google-maps";
 import { decode } from "@googlemaps/polyline-codec";
 import { MultiRouteResponse, Waypoint } from "../types";
+import { formatDuration } from "../utils";
 import WeatherMarker from "./WeatherMarker";
-
-function formatDuration(minutes: number): string {
-  if (minutes < 60) return `${Math.round(minutes)} min`;
-  const h = Math.floor(minutes / 60);
-  const m = Math.round(minutes % 60);
-  return m > 0 ? `${h}h ${m}min` : `${h}h`;
-}
 
 const MIN_MARKER_DISTANCE_PX = 40;
 
