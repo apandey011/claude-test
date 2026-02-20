@@ -54,6 +54,10 @@ dist/
 .DS_Store
 Thumbs.db
 
+# Capacitor iOS build artifacts
+frontend/ios/App/App/public/
+frontend/ios/App/Pods/
+
 # Root-level lockfile (no root package.json; frontend has its own)
 /package-lock.json
 

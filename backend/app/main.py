@@ -59,7 +59,7 @@ app.state.limiter = limiter
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[settings.frontend_origin],
+    allow_origins=settings.allowed_origins,
     allow_methods=["POST", "OPTIONS"],
     allow_headers=["Content-Type"],
 )

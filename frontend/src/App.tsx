@@ -1,3 +1,4 @@
+import { Capacitor } from "@capacitor/core";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { APIProvider } from "@vis.gl/react-google-maps";
 import { fetchRouteWeather } from "./api";
@@ -12,6 +13,7 @@ import WeatherPanel from "./components/WeatherPanel";
 
 const GOOGLE_MAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || "";
 const E2E_MODE = import.meta.env.VITE_E2E_MODE === "1";
+const WEB_URL = import.meta.env.VITE_WEB_URL || "";
 
 export default function App() {
   const [routeData, setRouteData] = useState<MultiRouteResponse | null>(null);
@@ -161,7 +163,10 @@ export default function App() {
             <button
               className="copy-link-btn"
               onClick={() => {
-                navigator.clipboard.writeText(window.location.href).then(() => {
+                const shareUrl = Capacitor.isNativePlatform() && WEB_URL
+                  ? `${WEB_URL}${window.location.search}`
+                  : window.location.href;
+                navigator.clipboard.writeText(shareUrl).then(() => {
                   setLinkCopied(true);
                   setTimeout(() => setLinkCopied(false), 2000);
                 }).catch(() => {/* clipboard not available */});

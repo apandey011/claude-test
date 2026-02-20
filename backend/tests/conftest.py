@@ -5,7 +5,7 @@ import os
 # Set required env vars BEFORE any app imports so that
 # ``app.config.Settings()`` (which runs at import time) succeeds.
 os.environ.setdefault("GOOGLE_MAPS_API_KEY", "test-api-key-12345")
-os.environ.setdefault("FRONTEND_ORIGIN", "http://localhost:5173")
+os.environ.setdefault("FRONTEND_ORIGINS", "http://localhost:5173")
 
 from datetime import datetime, timezone
 

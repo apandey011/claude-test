@@ -5,7 +5,7 @@ from pydantic_settings import BaseSettings
 
 class Settings(BaseSettings):
     google_maps_api_key: str
-    frontend_origin: str = "http://localhost:5173"
+    frontend_origins: str = "http://localhost:5173"
     log_format: Literal["plain", "json"] = "plain"
     route_weather_rate_limit: str = "30/minute"
     sentry_dsn_backend: str | None = None
@@ -15,6 +15,10 @@ class Settings(BaseSettings):
     redis_url: str | None = None
 
     model_config = {"env_file": ".env"}
+
+    @property
+    def allowed_origins(self) -> list[str]:
+        return [o.strip() for o in self.frontend_origins.split(",") if o.strip()]
 
 
 settings = Settings()

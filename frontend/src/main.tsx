@@ -1,7 +1,15 @@
+import { Capacitor } from "@capacitor/core";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import App from "./App";
 import "./App.css";
+
+if (Capacitor.isNativePlatform()) {
+  import("@capacitor/status-bar").then(({ StatusBar, Style }) => {
+    StatusBar.setStyle({ style: Style.Light });
+    StatusBar.setOverlaysWebView({ overlay: true });
+  }).catch(() => {});
+}
 
 const sentryDsn = import.meta.env.VITE_SENTRY_DSN;
 if (sentryDsn) {
